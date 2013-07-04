@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Quoter</string>
+    <string name="action_settings">Settings</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="network_error">Что-то не так с подключением к интернет. Попробуйте позже.</string>
+    <string name="settings">Настройки</string>
+    <string name="try_again">Повторить загрузку</string>
+    <string name="refresh">Обновить</string>
+    <string name="network_unavailable">Сеть недоступна. Проверьте подключение.</string>
+    <string name="saved">Сохраненные</string>
+    <string name="All">Все</string>
+    <string name="location_not_set">Положение не установлено</string>
+
+</resources>

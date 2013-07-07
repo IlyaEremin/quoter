@@ -3,7 +3,6 @@ package com.example.quoter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLConnection;
 
@@ -24,16 +23,11 @@ public abstract class BaseQuoteParser implements QuoteParser  {
         }
     }
 
-    protected InputStream getInputStream() throws SocketTimeoutException {
+    protected InputStream getInputStream() {
     	URLConnection urlConn;
 		try {
 			urlConn = quoteUrl.openConnection();
-			urlConn.setConnectTimeout(5000);
-        	urlConn.setReadTimeout(10000);
 			return urlConn.getInputStream();
-		}
-		catch(SocketTimeoutException e){
-			throw new SocketTimeoutException();
 		}
 		catch (IOException e) {
 			return null;

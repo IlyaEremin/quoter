@@ -82,7 +82,7 @@ public class XmlHandler {
 		
 	}
 	
-	public void addQuoteToFile(Quote quote){
+	public void addQuoteToFile(Quote quote, String location){
 		try {
 			if(!xmlLiked.exists()){
 				
@@ -123,7 +123,7 @@ public class XmlHandler {
 			quoteTag.appendChild(text);
 			
 			Element loc = doc.createElement("location");
-			loc.appendChild(doc.createTextNode(quote.getLocation()));
+			loc.appendChild(doc.createTextNode(location));
 			quoteTag.appendChild(loc);
 			
 			quotes.appendChild(quoteTag);

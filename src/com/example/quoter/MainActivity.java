@@ -1,6 +1,5 @@
 package com.example.quoter;
 
-// TODO кнопка лайк и просмотр лайкнутых
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -18,10 +17,6 @@ import ru.sunsoft.quoter.R;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
-import android.location.Criteria;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
@@ -35,125 +30,118 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
-import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import com.example.quoter.DemoObjectFragment.onlikeButtonClickListener;
 
-public class MainActivity extends FragmentActivity implements
-		onlikeButtonClickListener {
+public class MainActivity extends FragmentActivity implements onlikeButtonClickListener {
 
-	/**
-	 * The {@link android.support.v4.view.PagerAdapter} that will provide
-	 * fragments representing each object in a collection. We use a
-	 * {@link android.support.v4.app.FragmentStatePagerAdapter} derivative,
-	 * which will destroy and re-create fragments as needed, saving and
-	 * restoring their state in the process. This is important to conserve
-	 * memory and is a best practice when allowing navigation between objects in
-	 * a potentially large collection.
-	 */
 	DemoCollectionPagerAdapter mDemoCollectionPagerAdapter;
 
-	/**
-	 * The {@link android.support.v4.view.ViewPager} that will display the
-	 * object collection.
-	 */
 	ViewPager mViewPager;
 
-	String url = "https://dl.dropboxusercontent.com/u/67723735/quotes.xml";
-
-	QuoteParser sqp;
+	static final String url = "https://dl.dropboxusercontent.com/u/67723735/quotes.xml";
 
 	private int currentPosition;
-	List<Integer> savedQuotes;
-	String openingFile;
+	
+	List<Integer> savedQuotesIds;
+	
+	GeoApplication mainApp;
 
 	ProgressDialog mProgressDialog;
+	boolean loadSaved;
 
-	@SuppressWarnings("deprecation")
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
-		Intent intent = getIntent();
-		boolean loadSaved = intent.getBooleanExtra("loadSaved", false);
+		
+		mainApp = ((GeoApplication)getApplication());
+		
+		loadSaved = getIntent().getBooleanExtra("loadSaved", false);
 
-		XmlHandler xmlHandler = new XmlHandler(this);
-		savedQuotes = xmlHandler.getSavedQuotes();
+		savedQuotesIds = new XmlHandler(this).getSavedQuotes();
 
 		setContentView(R.layout.activity_collection_demo);
 		mViewPager = (ViewPager) findViewById(R.id.pager);
 
 		mProgressDialog = new ProgressDialog(this);
-		mProgressDialog.setMessage("ќбновл€ю цитаты");
+		mProgressDialog.setMessage(getString(R.string.download_quotes));
 		mProgressDialog.setIndeterminate(false);
 		mProgressDialog.setMax(100);
 		mProgressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-
+		
 		if (loadSaved) {
-			try {
-				openingFile = new File(getFilesDir(),XmlHandler.likedQuotesFile).toURL().toString();
-				new RetreiveFeedTask(openingFile, null, false, true).execute();
-			} catch (MalformedURLException e) {
-			}
+			if(new File(getFilesDir(), XmlHandler.likedQuotesFile).exists())
+				new RetreiveFeedTask("file:" + new File(getFilesDir(), XmlHandler.likedQuotesFile).toString(),
+						mainApp.getSavedQuotes()).execute();
 		} else {
-			openingFile = url;
-			new RetreiveFeedTask(openingFile,((GeoApplication) getApplication()).getQuotes(), false, false).execute();
+			currentPosition = mainApp.getCurrentPosition();
+			new RetreiveFeedTask(url, mainApp.getQuotes()).execute();
 		}
-	}
-
-	@Override
-	protected void onSaveInstanceState(Bundle outState) {
-		super.onSaveInstanceState(outState);
-		outState.putInt("position", mViewPager.getCurrentItem());
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		currentPosition = mViewPager.getCurrentItem();
-		removeUpdates();
+		if(!loadSaved){
+			mainApp.setCurrentPosition(mViewPager.getCurrentItem());
+		}
+		mainApp.removeUpdates();
 	}
-
+	
 	@Override
 	protected void onResume() {
 		super.onResume();
-		if (((GeoApplication) getApplication()).getQuotes() != null) {
-			mViewPager.setCurrentItem(currentPosition);
-		}
-		requestLocationUpdates();
+		mainApp.requestLocationUpdates();
 	}
-
+	
 	@Override
 	protected void onRestoreInstanceState(Bundle savedInstanceState) {
 		super.onRestoreInstanceState(savedInstanceState);
-		if (savedInstanceState != null) {
-			currentPosition = savedInstanceState.getInt("position");
+		if(!loadSaved){
+			currentPosition = mainApp.getCurrentPosition();
 		}
 	}
 
-	class RetreiveFeedTask extends AsyncTask<Void, Integer, Void> {
+	class RetreiveFeedTask extends AsyncTask<String, Integer, Void> {
 
 		private String openingFile;
 		private List<Quote> quotes;
-		private boolean isNeedUpdate = false, loadSaved;
+		private boolean needUpdate = false, loadSaved, needOpenFile;
 		File allQuotes;
+		String link;
 
-		public RetreiveFeedTask(String openingFile, List<Quote> quotes, boolean isNeedUpdate, boolean loadSaved) {
+		public RetreiveFeedTask(String openingFile, List<Quote> quotes) {
+			
 			this.openingFile = openingFile;
 			this.quotes = quotes;
+			
+			this.link = url;
+			
+			loadSaved = openingFile != url;
+			
 			allQuotes = new File(getFilesDir(), "allQuotes.xml");
-			this.isNeedUpdate =  !loadSaved && (isNeedUpdate || !allQuotes.exists());	
 			
-			this.loadSaved = loadSaved;
+			this.needUpdate =  openingFile == url && !allQuotes.exists();
+			this.needOpenFile = quotes.isEmpty() || needUpdate;
 			
+			if(!loadSaved) openingFile = "file:" + allQuotes.toString();
+		}
+		
+		
+		public RetreiveFeedTask(String openingFile, List<Quote> quotes, boolean needUpdate) {
+			this(openingFile, quotes);
+			this.needUpdate = needUpdate;
+			this.needOpenFile = true;
 		}
 
 		@Override
 		protected void onPreExecute() {
 			super.onPreExecute();
-			if (isNeedUpdate) {
-				mProgressDialog.show();
+			mProgressDialog.show();
+			if (needUpdate) {
 				ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
 				NetworkInfo activeInfo = connMgr.getActiveNetworkInfo();
 
@@ -168,15 +156,15 @@ public class MainActivity extends FragmentActivity implements
 			mProgressDialog.setProgress(progress[0]);
 		}
 
-		protected Void doInBackground(Void... params) {
+		protected Void doInBackground(String... urls) {
 			if (!isCancelled()) {
 				try {
-					
-					String fileForSaveAllQuotes = allQuotes.toURL().toString();
-					if (isNeedUpdate) {
-
-						URL url = new URL(openingFile);
+					if (needUpdate) {
+						
+						URL url = new URL(link);
 						URLConnection connection = url.openConnection();
+						connection.setConnectTimeout(5000);
+						connection.setReadTimeout(10000);
 						connection.connect();
 
 						int fileLength = connection.getContentLength();
@@ -188,29 +176,26 @@ public class MainActivity extends FragmentActivity implements
 						byte data[] = new byte[1024];
 						long total = 0;
 						int count;
+						Log.v("Ilya", "start download quotes");
 						while ((count = input.read(data)) != -1) {
 							total += count;
 							// publishing the progress....
 							publishProgress((int) (total * 100 / fileLength));
 							output.write(data, 0, count);
 						}
+						Log.v("Ilya", "end download quotes");
 						output.flush();
 						output.close();
 						input.close();
 					}
-					if(loadSaved){
+					
+					if(needOpenFile){
 						quotes = new SaxQuoteParser(openingFile).parse();
-					}
-					else{
-						if(quotes == null){
-							quotes = new SaxQuoteParser(fileForSaveAllQuotes).parse();
-							((GeoApplication) getApplication()).setQuotes(quotes);
+						if(!loadSaved){
+							mainApp.setQuotes(quotes);
+							Collections.shuffle(quotes);
 						}
-						Collections.shuffle(quotes);
 					}
-					
-					Log.v("Ilya", "download quotes");
-					
 
 				} catch (MalformedURLException e) {
 				} catch (SocketTimeoutException e) {
@@ -226,7 +211,7 @@ public class MainActivity extends FragmentActivity implements
 			mProgressDialog.dismiss();
 			
 			setContentView(R.layout.activity_collection_demo);
-			mDemoCollectionPagerAdapter = new DemoCollectionPagerAdapter(getSupportFragmentManager(), quotes, savedQuotes);
+			mDemoCollectionPagerAdapter = new DemoCollectionPagerAdapter(getSupportFragmentManager(), quotes, savedQuotesIds);
 			mViewPager = (ViewPager) findViewById(R.id.pager);
 			mViewPager.setAdapter(mDemoCollectionPagerAdapter);
 			mViewPager.setCurrentItem(currentPosition);
@@ -235,74 +220,41 @@ public class MainActivity extends FragmentActivity implements
 		@Override
 		protected void onCancelled() {
 			super.onCancelled();
+			mProgressDialog.dismiss();
+			
 			Log.v("Ilya", "On canceled");
 			Toast.makeText(getApplicationContext(), R.string.network_error, Toast.LENGTH_LONG).show();
 			setContentView(R.layout.network_unavailable);
-			Button b = (Button) findViewById(R.id.btnTryAgain);
-			b.setOnClickListener(new OnClickListener() {
+			findViewById(R.id.btnTryAgain).setOnClickListener(new OnClickListener() {
 
 				@Override
 				public void onClick(View v) {
-					new RetreiveFeedTask(openingFile, quotes, true, false).execute();
+					new RetreiveFeedTask(openingFile, quotes).execute();
 				}
 			});
 		}
 	}
 
 	@Override
-	public void likeButtonClick(DemoObjectFragment frag, Quote quote) {
-		Button likeButton = (Button) frag.getView().findViewById(R.id.btnLike);
+	public void likeButtonClick(DemoObjectFragment fragment, Quote quote) {
+		ImageButton likeButton = (ImageButton) fragment.getView().findViewById(R.id.btnLike);
 		XmlHandler xh = new XmlHandler(this);
-		if (frag.isLiked) {
+		if (fragment.isLiked) {
 			// remove like
-			likeButton.setText("</3");
-			savedQuotes.remove(Integer.valueOf(quote.getId()));
+			likeButton.setImageResource(R.drawable.like_not_pressed);
+			savedQuotesIds.remove(Integer.valueOf(quote.getId()));
 			xh.removeQuote(quote);
-			frag.isLiked = false;
+			fragment.isLiked = false;
 		} else {
 			// make like
-			likeButton.setText("<3");
-			quote.setLocation(getCoordinates());
-			xh.addQuoteToFile(quote);
-			savedQuotes.add(Integer.valueOf(quote.getId()));
-			frag.isLiked = true;
+			likeButton.setImageResource(R.drawable.like_pressed);
+			xh.addQuoteToFile(quote, mainApp.getCoordinates());
+			savedQuotesIds.add(Integer.valueOf(quote.getId()));
+			fragment.isLiked = true;
 		}
 	}
 
-	private void removeUpdates() {
-
-		LocationManager locationManager = ((GeoApplication) getApplication()).getLocationManager();
-		LocationListener locationListner = ((GeoApplication) getApplication()).getLocationListener();
-
-		locationManager.removeUpdates(locationListner);
-	}
-
-	private void requestLocationUpdates() {
-		final LocationManager locationManager = ((GeoApplication) getApplication()).getLocationManager();
-		LocationListener locationListner = ((GeoApplication) getApplication()).getLocationListener();
-		final String provider = getBestProvider(locationManager);
-		locationManager.requestLocationUpdates(provider, 10, 0, locationListner);
-//		locationManager.requestLocationUpdates(provider, 100, 0, locationListner);
-	}
-
-	private String getBestProvider(LocationManager locationManager) {
-		Criteria criteria = new Criteria();
-		criteria.setAccuracy(Criteria.ACCURACY_COARSE);
-		String provider = locationManager.getBestProvider(criteria, true);
-
-		return provider;
-	}
-
-	private String getCoordinates() {
-		LocationManager locationManager = ((GeoApplication) getApplication()).getLocationManager();
-		String provider = getBestProvider(locationManager);
-		Location location = locationManager.getLastKnownLocation(provider);
-		if (null != location) {
-			return "geo:0,0?q=" + location.getLatitude() + "," + location.getLongitude();
-		} else {
-			return getString(R.string.location_not_set);
-		}
-	}
+	
 
 	// Populates the activity's options menu.
 	@Override
@@ -320,6 +272,7 @@ public class MainActivity extends FragmentActivity implements
 			loadAll.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 			startActivity(loadAll);
 			return true;
+			
 		case R.id.saved:
 			Intent loadSaved = new Intent(this, MainActivity.class);
 			loadSaved.putExtra("loadSaved", true);
@@ -328,7 +281,7 @@ public class MainActivity extends FragmentActivity implements
 			return true;
 
 		case R.id.refresh:
-			new RetreiveFeedTask(openingFile,((GeoApplication) getApplication()).getQuotes(), true, false).execute();
+			new RetreiveFeedTask(url, mainApp.getQuotes(), true).execute();
 			return true;
 		default:
 			return super.onOptionsItemSelected(item);

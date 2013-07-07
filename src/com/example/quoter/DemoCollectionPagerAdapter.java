@@ -5,7 +5,6 @@ import java.util.List;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
-import android.util.Log;
 
 /**
  * A {@link android.support.v4.app.FragmentStatePagerAdapter} that returns a fragment
@@ -20,7 +19,6 @@ public class DemoCollectionPagerAdapter extends FragmentStatePagerAdapter {
         super(fm);
         this.quotes = quotes;
         this.savedQuotes = savedQuotes;
-		Log.v("Ilya", "FragmentAdapter create");
     }
     
     @Override

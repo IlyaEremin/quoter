@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 /**
@@ -98,7 +99,7 @@ public class DemoObjectFragment extends Fragment {
         
         rootView.findViewById(R.id.ScrollView01).setBackgroundColor(color);
         
-        Button btnLike = (Button)rootView.findViewById(R.id.btnLike);
+        ImageButton btnLike = (ImageButton)rootView.findViewById(R.id.btnLike);
         btnLike.setOnClickListener(new OnClickListener() {
 			
 			@Override
@@ -108,7 +109,7 @@ public class DemoObjectFragment extends Fragment {
 		});
         
     	if(isLiked){
-        	btnLike.setText("<3");
+        	btnLike.setImageResource(R.drawable.like_pressed);
         }
         
         return rootView;

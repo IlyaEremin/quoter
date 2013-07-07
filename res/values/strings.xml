@@ -12,5 +12,6 @@
     <string name="saved">Сохраненные</string>
     <string name="All">Все</string>
     <string name="location_not_set">Положение не установлено</string>
+    <string name="download_quotes">Загружаю цитаты</string>
 
 </resources>

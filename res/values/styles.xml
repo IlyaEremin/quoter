@@ -16,5 +16,10 @@
     <style name="AppTheme" parent="AppBaseTheme">
         <!-- All customizations that are NOT specific to a particular API-level can go here. -->
     </style>
-
+    
+    <!-- the theme applied to the application or activity -->
+    <style name="TransparentActionBarTheme" parent="@style/Theme.AppCompat">
+        <item name="windowActionBarOverlay">true</item>
+    </style>
+    
 </resources>

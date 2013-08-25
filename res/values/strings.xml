@@ -7,11 +7,19 @@
     <string name="network_error">Что-то не так с подключением к интернет. Попробуйте позже.</string>
     <string name="settings">Настройки</string>
     <string name="try_again">Повторить загрузку</string>
-    <string name="refresh">Обновить</string>
+    <string name="action_refresh">Обновить</string>
     <string name="network_unavailable">Сеть недоступна. Проверьте подключение.</string>
     <string name="saved">Сохраненные</string>
     <string name="All">Все</string>
     <string name="location_not_set">Положение не установлено</string>
     <string name="download_quotes">Загружаю цитаты</string>
+    <drawable name="ab_bg_black">#80000000</drawable>
+    <string name="action_like">Нравится</string>
+    <string name="action_share">Поделиться</string>
+    <string-array name="Category">
+        <item >Все</item>
+        <item >Любимые</item>
+    </string-array>
+    <string name="share_using">Поделиться цитатой</string>
 
 </resources>

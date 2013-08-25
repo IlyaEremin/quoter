@@ -1,10 +1,14 @@
 package com.example.quoter;
 
-import java.util.List;
+import java.util.Random;
 
+import android.database.Cursor;
+import android.graphics.Color;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
+
+import com.example.quoter.Contract.Quotes;
 
 /**
  * A {@link android.support.v4.app.FragmentStatePagerAdapter} that returns a fragment
@@ -12,30 +16,35 @@ import android.support.v4.app.FragmentStatePagerAdapter;
  */
 public class DemoCollectionPagerAdapter extends FragmentStatePagerAdapter {
 
-	List<Quote> quotes;
-	List<Integer> savedQuotes;
+	Cursor quotesCursor;
+	private String[] colors = {
+			"#ff7300", "#c42f69", "#8c5991", "#e6cc5d", "#1fa9b4", "#31c3c2", "#0099cc", "#CC0000", "#669900"};
+		
+	private Random rand = new Random();
 	
-    public DemoCollectionPagerAdapter(FragmentManager fm, List<Quote> quotes, List<Integer> savedQuotes) {
+    public DemoCollectionPagerAdapter(FragmentManager fm, Cursor cursor) {
         super(fm);
-        this.quotes = quotes;
-        this.savedQuotes = savedQuotes;
+        this.quotesCursor = cursor;
     }
     
     @Override
     public Fragment getItem(int i) {
-        Fragment fragment = new DemoObjectFragment(quotes.get(i), isLiked(quotes.get(i).getId()));
-        return fragment;
+    	quotesCursor.moveToPosition(i);
+        return new DemoObjectFragment(quoteFromCursor(quotesCursor), 
+        		Color.parseColor(colors[rand.nextInt(colors.length)]));
     }
     
-    private boolean isLiked(int id){
-    	if(savedQuotes != null){
-    		return savedQuotes.contains(id);
-    	}
-    	return false;
+    private Quote quoteFromCursor(Cursor cursor){
+    	
+    	Quote quote = new Quote();
+    	quote.setId(cursor.getString(cursor.getColumnIndex(Quotes.ID)));
+    	quote.setAuthorName(cursor.getString(cursor.getColumnIndex(Quotes.AUTHOR)));
+    	quote.setText(cursor.getString(cursor.getColumnIndex(Quotes.TEXT)));
+    	return quote;
     }
-
+    
     @Override
     public int getCount() {
-        return quotes.size();
+        return quotesCursor.getCount();
     }
 }

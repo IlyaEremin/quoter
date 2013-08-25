@@ -9,24 +9,31 @@
         android:targetSdkVersion="17" />
     
     <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 
     <application
         android:allowBackup="true"
         android:icon="@drawable/icon"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme"
-        android:name="com.example.quoter.GeoApplication">
+        android:name="com.example.quoter.QuoterApplication">
         <activity
             android:name="com.example.quoter.MainActivity"
             android:label="@string/app_name"
+            android:theme="@style/TransparentActionBarTheme"
             android:configChanges="orientation|keyboardHidden" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <provider
+            android:name="com.example.quoter.RestProvider"
+            android:authorities="com.example.quoter"
+            android:exported="false"/>
+        <service
+             android:name="com.example.quoter.RestService" 
+             android:exported="false"
+            />
+        
     </application>
 
 </manifest>

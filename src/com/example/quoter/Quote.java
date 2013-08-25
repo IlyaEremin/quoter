@@ -2,10 +2,10 @@ package com.example.quoter;
 
 public class Quote implements Comparable<Quote> {
 	
-	private String authorName, text, location;
-	private int id;
+	private String authorName, text;
+	private long id;
 	
-	public int getId(){
+	public long getId(){
 		return id;
 	}
 	
@@ -21,10 +21,6 @@ public class Quote implements Comparable<Quote> {
 		this.authorName = authorName;
 	}
 	
-	public String getLocation() {
-		return location;
-	}
-	
 	public void setText(String text){
 		this.text = text;
 	}
@@ -33,8 +29,12 @@ public class Quote implements Comparable<Quote> {
 		this.id = Integer.parseInt(id);
 	}
 	
-	public void setLocation(String location) {
-		this.location = location;
+	public void setId(int id){
+		this.id = id;
+	}
+	
+	public void setId(long id){
+		this.id = id;
 	}
 	
 	@Override
@@ -48,7 +48,6 @@ public class Quote implements Comparable<Quote> {
 		copy.authorName = authorName;
 		copy.text = text;
 		copy.id = id;
-		copy.location = location;
 		return copy;
 	}
 

@@ -1,28 +1,25 @@
 package com.example.quoter;
 
+
+import java.lang.reflect.Field;
+
 import ru.sunsoft.quoter.R;
+import uk.co.senab.actionbarpulltorefresh.extras.actionbarcompat.PullToRefreshAttacher;
 import android.content.ContentValues;
-import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
-import android.support.v4.view.MenuItemCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
+import android.view.ViewConfiguration;
 import android.widget.ArrayAdapter;
-import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.example.quoter.Contract.Quotes;
@@ -34,18 +31,16 @@ public class MainActivity extends ActionBarActivity implements
 ActionBar.OnNavigationListener, OnQuoteShowListener {
 
 	DemoCollectionPagerAdapter mDemoCollectionPagerAdapter;
+	private PullToRefreshAttacher mPullToRefreshAttacher;
 
 	ViewPager mViewPager;
-	
-	boolean loadSaved;
-	
 	Quote currentQuote;
-	private MenuItem refreshItem;
+	private MenuItem likeItem;
 	final String TAG = getClass().getSimpleName();
-
-	
 	private RestRequestManager requestManager;
-	
+	ActionBar actionBar;
+	private static final int TAB_ALL = 0;
+	private static final int TAB_LIKED = 1;
 	private static final int LOADER_ID = 1;
 	private static final int LOADER_ID_LIKED = 2;
 	private static final String[] PROJECTION = { 
@@ -53,21 +48,18 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 		Quotes.TEXT,
 		Quotes.AUTHOR
 	};
-	ActionBar actionBar;
 	
 	private LoaderCallbacks<Cursor> loaderCallbacks = new LoaderCallbacks<Cursor>() {
 
 		@Override
 		public Loader<Cursor> onCreateLoader(int loaderId, Bundle arg1) {
-
 			return new CursorLoader(
 				MainActivity.this,
 				Quotes.CONTENT_URI,
 				PROJECTION,
 				null,
 				null,
-				null
-			);
+				null );
 		}
 
 		@Override
@@ -77,12 +69,8 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 			mViewPager.setAdapter(mDemoCollectionPagerAdapter);
 			mViewPager.setCurrentItem(((QuoterApplication)getApplication()).getCurrentAllPosition());
 			
-			if (refreshItem != null && MenuItemCompat.getActionView(refreshItem) != null) {
-				MenuItemCompat.getActionView(refreshItem).clearAnimation();
-				MenuItemCompat.setActionView(refreshItem, null);
-	        }
-			
 			if (cursor.getCount() == 0) {
+				mPullToRefreshAttacher.setRefreshing(true);
 				update();
 			}
 		}
@@ -128,9 +116,12 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 		
 		@Override
 		public void onRequestFinished(Request request, Bundle resultData) {
+			mPullToRefreshAttacher.setRefreshComplete();
+			actionBar.setSelectedNavigationItem(0);
 		}
 		
 		void showError() {
+			mPullToRefreshAttacher.setRefreshComplete();
 			Toast.makeText(MainActivity.this, R.string.network_error, Toast.LENGTH_LONG).show();
 		}
 		
@@ -155,12 +146,23 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		
+		try {
+	        ViewConfiguration config = ViewConfiguration.get(this);
+	        Field menuKeyField = ViewConfiguration.class.getDeclaredField("sHasPermanentMenuKey");
+	        if(menuKeyField != null) {
+	            menuKeyField.setAccessible(true);
+	            menuKeyField.setBoolean(config, false);
+	        }
+	    } catch (Exception ex) {}
+		mPullToRefreshAttacher = PullToRefreshAttacher.get(this);
+		
 		actionBar = getSupportActionBar();
 		actionBar.setBackgroundDrawable(getResources().getDrawable(R.drawable.ab_bg_black));
 		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
-		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item,
+		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, R.layout.support_simple_spinner_dropdown_item,
 				getResources().getStringArray(R.array.Category));
-		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		adapter.setDropDownViewResource(R.layout.support_simple_spinner_dropdown_item);
 		actionBar.setListNavigationCallbacks(adapter, this);
 		actionBar.setDisplayShowTitleEnabled(false);
 		
@@ -169,15 +171,15 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 		mViewPager = (ViewPager) findViewById(R.id.pager);
 		
 		if(savedInstanceState != null){
-			actionBar.setSelectedNavigationItem(savedInstanceState.getInt("Category", 0));
+			actionBar.setSelectedNavigationItem(savedInstanceState.getInt("Category", TAB_ALL));
 		}
-		
 		requestManager = RestRequestManager.from(this);
+		
 	}
 	
 	@Override
 	protected void onPause() {
-		if(actionBar.getSelectedNavigationIndex() == 0){
+		if(actionBar.getSelectedNavigationIndex() == TAB_ALL){
 			((QuoterApplication)getApplication()).setCurrentAllPosition(mViewPager.getCurrentItem());
 		}
 		else ((QuoterApplication)getApplication()).setCurrentLikedPosition(mViewPager.getCurrentItem());
@@ -193,9 +195,15 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 	// Populates the activity's options menu.
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		MenuInflater inflater = getMenuInflater();
-		inflater.inflate(R.menu.action_bar_buttons, menu);
+		getMenuInflater().inflate(R.menu.action_bar_buttons, menu);
+		likeItem = menu.findItem(R.id.action_like);
 		return super.onCreateOptionsMenu(menu);
+	}
+	
+	@Override
+	public boolean onPrepareOptionsMenu(Menu menu) {
+		Log.v("Ilya", "prepare");
+		return super.onPrepareOptionsMenu(menu);
 	}
 
 	@Override
@@ -207,84 +215,65 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 		case R.id.action_like:
 			like_button();
 			return true;
-		case R.id.action_refresh:
-			refreshItem = item;
-			update();
-			return true;
 		default:
 			return super.onOptionsItemSelected(item);
 		}
 	}
 	
-	@Override
-	public boolean onPrepareOptionsMenu(Menu menu) {
-		if(currentQuote != null){
-			if(isLiked(currentQuote)){
-				menu.findItem(R.id.action_like).setIcon(R.drawable.like_pressed);
-			}
-			else menu.findItem(R.id.action_like).setIcon(R.drawable.like_not_pressed);
-		}
-		return super.onPrepareOptionsMenu(menu);
-	}
-	
+
 	private void share_button(){
-		String shareBody = currentQuote.getQuoteText();
-		if (currentQuote.getQuoteAuthor() != null){
-			shareBody += '\n' + currentQuote.getQuoteAuthor();
+		if(currentQuote!= null){
+			String shareBody = currentQuote.getQuoteText();
+			if (currentQuote.getQuoteAuthor() != null){
+				shareBody += '\n' + currentQuote.getQuoteAuthor();
+			}
+		    Intent sharingIntent = new Intent(android.content.Intent.ACTION_SEND);
+		        sharingIntent.setType("text/plain");
+		        sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, shareBody);
+		        startActivity(Intent.createChooser(sharingIntent, getResources().getString(R.string.share_using)));
 		}
-	    Intent sharingIntent = new Intent(android.content.Intent.ACTION_SEND);
-	        sharingIntent.setType("text/plain");
-	        sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, shareBody);
-	        startActivity(Intent.createChooser(sharingIntent, getResources().getString(R.string.share_using)));
+		else Toast.makeText(this, "Цитат нет, попробуйте обновить", Toast.LENGTH_SHORT).show();
+		
 	}
 	
 	void update() {
-		LayoutInflater inflater = (LayoutInflater) this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-		ImageView iv = (ImageView) inflater.inflate(R.layout.refresh_animation, null);
-
-		Animation rotation = AnimationUtils.loadAnimation(this, R.anim.clockwise_refresh);
-		rotation.setRepeatCount(Animation.INFINITE);
-		iv.startAnimation(rotation);
-
-		MenuItemCompat.setActionView(refreshItem, iv);
-
 		Request updateRequest = new Request(RequestFactory.REQUEST_QUOTES);
-		updateRequest.put("screen_name", "habrahabr");
 		requestManager.execute(updateRequest, requestListener);
 	}
 
 	private void like_button(){
-
-		if (isLiked(currentQuote)) {
-			// remove like
-			getContentResolver().delete(Quotes.LIKED_CONTENT_URI, Quotes.ID + "= ?", 
-					new String[] {String.valueOf(currentQuote.getId())});
-			((QuoterApplication)getApplication()).removeLikedId(currentQuote.getId());
-		} else {
-			// like
-			ContentValues values = new ContentValues();
-			values.put(Quotes.ID, currentQuote.getId());
-			values.put(Quotes.AUTHOR, currentQuote.getQuoteAuthor());
-			values.put(Quotes.TEXT, currentQuote.getQuoteText());
-			
-			getContentResolver().insert(Quotes.LIKED_CONTENT_URI, values);
-			((QuoterApplication)getApplication()).addLikedId(currentQuote.getId());
+		if(currentQuote != null){
+			if (isLiked(currentQuote)) {
+				// remove like
+				getContentResolver().delete(Quotes.LIKED_CONTENT_URI, Quotes.ID + "= ?", 
+						new String[] {String.valueOf(currentQuote.getId())});
+				((QuoterApplication)getApplication()).removeLikedId(currentQuote.getId());
+			} else {
+				// like
+				ContentValues values = new ContentValues();
+				values.put(Quotes.ID, currentQuote.getId());
+				values.put(Quotes.AUTHOR, currentQuote.getQuoteAuthor());
+				values.put(Quotes.TEXT, currentQuote.getQuoteText());
+				
+				getContentResolver().insert(Quotes.LIKED_CONTENT_URI, values);
+				((QuoterApplication)getApplication()).addLikedId(currentQuote.getId());
+			}
+			onArticleSelected(currentQuote);
 		}
-		ActivityCompat.invalidateOptionsMenu(MainActivity.this);
+		else Toast.makeText(this, "Цитат нет, попробуйте обновить", Toast.LENGTH_SHORT).show();
 
 	}
 
 	@Override
 	public boolean onNavigationItemSelected(int itemPosition, long itemId) {
-		if(itemPosition == 0){
+		if(itemPosition == TAB_ALL){
 			((QuoterApplication)getApplication()).setCurrentLikedPosition(mViewPager.getCurrentItem());
 			getSupportLoaderManager().initLoader(LOADER_ID, null, loaderCallbacks);
 			return true;
 		}
-		else if (itemPosition == 1){
+		else if (itemPosition == TAB_LIKED){
 			((QuoterApplication)getApplication()).setCurrentAllPosition(mViewPager.getCurrentItem());
 			getSupportLoaderManager().restartLoader(LOADER_ID_LIKED, null, LikedQuotesloaderCallbacks);
-			Log.v("Ilya", "saved");
 			return true;
 		}
 		return false;
@@ -297,8 +286,14 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 	@Override
 	public void onArticleSelected(Quote quote) {
 		currentQuote = quote;
-		ActivityCompat.invalidateOptionsMenu(MainActivity.this);
+		if (isLiked(currentQuote)) {
+			likeItem.setIcon(R.drawable.like_pressed);
+		}
+		else likeItem.setIcon(R.drawable.like_not_pressed);
 	}
 	
+	PullToRefreshAttacher getPullToRefreshAttacher() {
+        return mPullToRefreshAttacher;
+    }
 
 }

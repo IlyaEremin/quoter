@@ -1,6 +1,7 @@
 package com.example.quoter;
 
 import ru.sunsoft.quoter.R;
+import uk.co.senab.actionbarpulltorefresh.library.PullToRefreshAttacher;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.graphics.Color;
@@ -16,9 +17,10 @@ import android.widget.TextView;
  * A dummy fragment representing a section of the app, but that simply displays dummy text.
  */
 @SuppressLint("ValidFragment")
-public class DemoObjectFragment extends Fragment {
+public class DemoObjectFragment extends Fragment implements PullToRefreshAttacher.OnRefreshListener {
 	
 	OnQuoteShowListener mListener;
+	private PullToRefreshAttacher mPullToRefreshAttacher;
 	
 	public interface OnQuoteShowListener {
         public void onArticleSelected(Quote quote);
@@ -42,7 +44,6 @@ public class DemoObjectFragment extends Fragment {
 	public DemoObjectFragment(Quote quote, int color){
         this.quote = quote;
         this.color = color;
-        Log.v("Ilya", String.valueOf(color));
 	}
 	
 	@Override
@@ -54,12 +55,23 @@ public class DemoObjectFragment extends Fragment {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setRetainInstance(true);
+
+
+
+	    // Add the Refreshable View and provide the refresh listener
+	   
 	}
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 		View rootView = inflater.inflate(R.layout.fragment_collection_object, container, false);
-        ((TextView) rootView.findViewById(R.id.quote)).setText(quote.getQuoteText().toUpperCase());
+		
+        mPullToRefreshAttacher = ((MainActivity) getActivity())
+                .getPullToRefreshAttacher();
+
+        mPullToRefreshAttacher.addRefreshableView(rootView, this);
+        
+		((TextView) rootView.findViewById(R.id.quote)).setText(quote.getQuoteText().toUpperCase());
         ((TextView) rootView.findViewById(R.id.authorName)).setText(quote.getQuoteAuthor());
         rootView.findViewById(R.id.ScrollView01).setBackgroundColor(color);
         if(color == Color.parseColor("#e6cc5d") || color == Color.parseColor("#31c3c2")){
@@ -75,6 +87,11 @@ public class DemoObjectFragment extends Fragment {
 		if(isVisibleToUser){
 			mListener.onArticleSelected(quote);
 		}
+	}
+
+	@Override
+	public void onRefreshStarted(View view) {
+		((MainActivity) getActivity()).update();
 	}
     
     

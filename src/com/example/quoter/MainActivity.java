@@ -8,6 +8,7 @@ import uk.co.senab.actionbarpulltorefresh.extras.actionbarcompat.PullToRefreshAt
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.CursorLoader;
@@ -18,19 +19,21 @@ import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.ViewConfiguration;
 import android.widget.ArrayAdapter;
+import android.widget.ScrollView;
 import android.widget.Toast;
 
 import com.example.quoter.Contract.Quotes;
-import com.example.quoter.DemoObjectFragment.OnQuoteShowListener;
+import com.example.quoter.QuoteFragment.OnQuoteShowListener;
 import com.foxykeep.datadroid.requestmanager.Request;
 import com.foxykeep.datadroid.requestmanager.RequestManager.RequestListener;
 
 public class MainActivity extends ActionBarActivity implements
-ActionBar.OnNavigationListener, OnQuoteShowListener {
+ActionBar.OnNavigationListener, OnQuoteShowListener, PullToRefreshAttacher.OnRefreshListener {
 
-	DemoCollectionPagerAdapter mDemoCollectionPagerAdapter;
+	PagerAdapter mPagerAdapter;
 	private PullToRefreshAttacher mPullToRefreshAttacher;
 
 	ViewPager mViewPager;
@@ -39,6 +42,7 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 	final String TAG = getClass().getSimpleName();
 	private RestRequestManager requestManager;
 	ActionBar actionBar;
+	ScrollView sv;
 	private static final int TAB_ALL = 0;
 	private static final int TAB_LIKED = 1;
 	private static final int LOADER_ID = 1;
@@ -65,10 +69,9 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 		@Override
 		public void onLoadFinished(Loader<Cursor> arg0, Cursor cursor) {
 			
-			mDemoCollectionPagerAdapter = new DemoCollectionPagerAdapter(getSupportFragmentManager(), cursor);
-			mViewPager.setAdapter(mDemoCollectionPagerAdapter);
+			mPagerAdapter = new PagerAdapter(getSupportFragmentManager(), cursor);
+			mViewPager.setAdapter(mPagerAdapter);
 			mViewPager.setCurrentItem(((QuoterApplication)getApplication()).getCurrentAllPosition());
-			
 			if (cursor.getCount() == 0) {
 				mPullToRefreshAttacher.setRefreshing(true);
 				update();
@@ -97,11 +100,12 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 		@Override	
 		public void onLoadFinished(Loader<Cursor> arg0, Cursor cursor) {
 			
-			mDemoCollectionPagerAdapter = new DemoCollectionPagerAdapter(getSupportFragmentManager(), cursor);
-			mViewPager.setAdapter(mDemoCollectionPagerAdapter);
+			mPagerAdapter = new PagerAdapter(getSupportFragmentManager(), cursor);
+			mViewPager.setAdapter(mPagerAdapter);
 			mViewPager.setCurrentItem(((QuoterApplication)getApplication()).getCurrentLikedPosition());
-			
 			if (cursor.getCount() == 0) {
+				mPagerAdapter = new PagerAdapter(getSupportFragmentManager(), null);
+				mViewPager.setAdapter(mPagerAdapter);
 				Toast.makeText(MainActivity.this, "Сохранённых цитат нет, пока...", Toast.LENGTH_LONG).show();
 			}
 		}
@@ -123,6 +127,11 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 		void showError() {
 			mPullToRefreshAttacher.setRefreshComplete();
 			Toast.makeText(MainActivity.this, R.string.network_error, Toast.LENGTH_LONG).show();
+			if(currentQuote == null){
+				mPagerAdapter = new PagerAdapter(getSupportFragmentManager(), null);
+				mViewPager.setAdapter(mPagerAdapter);
+				Log.v("Ilya", "olo");
+			}
 		}
 		
 		@Override
@@ -166,8 +175,7 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 		actionBar.setListNavigationCallbacks(adapter, this);
 		actionBar.setDisplayShowTitleEnabled(false);
 		
-		setContentView(R.layout.activity_collection_demo);
-		
+		setContentView(R.layout.quotes_pager);
 		mViewPager = (ViewPager) findViewById(R.id.pager);
 		
 		if(savedInstanceState != null){
@@ -200,12 +208,6 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 		return super.onCreateOptionsMenu(menu);
 	}
 	
-	@Override
-	public boolean onPrepareOptionsMenu(Menu menu) {
-		Log.v("Ilya", "prepare");
-		return super.onPrepareOptionsMenu(menu);
-	}
-
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
@@ -258,7 +260,7 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 				getContentResolver().insert(Quotes.LIKED_CONTENT_URI, values);
 				((QuoterApplication)getApplication()).addLikedId(currentQuote.getId());
 			}
-			onArticleSelected(currentQuote);
+			onQuoteVisible(currentQuote);
 		}
 		else Toast.makeText(this, "Цитат нет, попробуйте обновить", Toast.LENGTH_SHORT).show();
 
@@ -284,9 +286,9 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 	}
 
 	@Override
-	public void onArticleSelected(Quote quote) {
+	public void onQuoteVisible(Quote quote) {
 		currentQuote = quote;
-		if (isLiked(currentQuote)) {
+		if(currentQuote != null && isLiked(currentQuote)){
 			likeItem.setIcon(R.drawable.like_pressed);
 		}
 		else likeItem.setIcon(R.drawable.like_not_pressed);
@@ -295,5 +297,10 @@ ActionBar.OnNavigationListener, OnQuoteShowListener {
 	PullToRefreshAttacher getPullToRefreshAttacher() {
         return mPullToRefreshAttacher;
     }
+
+	@Override
+	public void onRefreshStarted(View view) {
+		update();
+	}
 
 }

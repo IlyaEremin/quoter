@@ -13,16 +13,17 @@ import android.os.Bundle;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.support.v4.view.MenuItemCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
+import android.support.v7.widget.ShareActionProvider;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.widget.ArrayAdapter;
-import android.widget.ScrollView;
 import android.widget.Toast;
 
 import com.example.quoter.Contract.Quotes;
@@ -42,7 +43,8 @@ ActionBar.OnNavigationListener, OnQuoteShowListener, PullToRefreshAttacher.OnRef
 	final String TAG = getClass().getSimpleName();
 	private RestRequestManager requestManager;
 	ActionBar actionBar;
-	ScrollView sv;
+	private ShareActionProvider mShareActionProvider;
+	
 	private static final int TAB_ALL = 0;
 	private static final int TAB_LIKED = 1;
 	private static final int LOADER_ID = 1;
@@ -150,8 +152,6 @@ ActionBar.OnNavigationListener, OnQuoteShowListener, PullToRefreshAttacher.OnRef
 		}
 	};
 	
-	
-	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -211,18 +211,22 @@ ActionBar.OnNavigationListener, OnQuoteShowListener, PullToRefreshAttacher.OnRef
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-		case R.id.action_share:
-			share_button();
-			return true;
 		case R.id.action_like:
 			like_button();
+			return true;
+		case R.id.action_share:
+			share_button();
 			return true;
 		default:
 			return super.onOptionsItemSelected(item);
 		}
 	}
 	
-
+	void update() {
+		Request updateRequest = new Request(RequestFactory.REQUEST_QUOTES);
+		requestManager.execute(updateRequest, requestListener);
+	}
+	
 	private void share_button(){
 		if(currentQuote!= null){
 			String shareBody = currentQuote.getQuoteText();
@@ -235,12 +239,7 @@ ActionBar.OnNavigationListener, OnQuoteShowListener, PullToRefreshAttacher.OnRef
 		        startActivity(Intent.createChooser(sharingIntent, getResources().getString(R.string.share_using)));
 		}
 		else Toast.makeText(this, "Цитат нет, попробуйте обновить", Toast.LENGTH_SHORT).show();
-		
-	}
-	
-	void update() {
-		Request updateRequest = new Request(RequestFactory.REQUEST_QUOTES);
-		requestManager.execute(updateRequest, requestListener);
+
 	}
 
 	private void like_button(){
@@ -282,16 +281,18 @@ ActionBar.OnNavigationListener, OnQuoteShowListener, PullToRefreshAttacher.OnRef
 	}
 	
 	private boolean isLiked(Quote quote){
+		if(quote == null) return false;
 		return ((QuoterApplication)getApplication()).getLikedIds().contains(quote.getId());
 	}
 
 	@Override
 	public void onQuoteVisible(Quote quote) {
 		currentQuote = quote;
-		if(currentQuote != null && isLiked(currentQuote)){
-			likeItem.setIcon(R.drawable.like_pressed);
-		}
-		else likeItem.setIcon(R.drawable.like_not_pressed);
+        if(isLiked(currentQuote)){
+        	likeItem.setIcon(R.drawable.like_pressed);
+        }
+        else likeItem.setIcon(R.drawable.like_not_pressed);
+		
 	}
 	
 	PullToRefreshAttacher getPullToRefreshAttacher() {

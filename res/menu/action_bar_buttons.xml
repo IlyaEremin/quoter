@@ -3,14 +3,13 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android" 
     xmlns:yourapp="http://schemas.android.com/apk/res-auto" >
     
-    <item android:id="@+id/action_like"
-      android:icon="@drawable/like_not_pressed"
-      android:title="@string/action_like"
-      yourapp:showAsAction="ifRoom" />
-    
-    <item android:id="@+id/action_share"
+     <item android:id="@+id/action_share"
           android:icon="@drawable/social_share"
           android:title="@string/action_share"
           yourapp:showAsAction="ifRoom" />
-
+     
+     <item android:id="@+id/action_like"
+      android:icon="@drawable/like_not_pressed"
+      android:title="@string/action_like"
+      yourapp:showAsAction="always" />
 </menu>

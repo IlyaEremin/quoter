@@ -1,2 +1,7 @@
-/bin
-/gen
+slidingMenu/build/
+build/
+quoter/build/
+.idea/
+*.iml
+.gradle/
+quoter/project.properties
